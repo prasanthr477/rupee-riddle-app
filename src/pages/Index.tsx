@@ -1,11 +1,117 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Trophy, Zap, IndianRupee, Clock, Award, Users } from 'lucide-react';
 
 const Index = () => {
+  const navigate = useNavigate();
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
+    <div className="min-h-screen bg-gradient-to-br from-primary via-primary/90 to-primary/70">
+      <div className="max-w-6xl mx-auto px-4 py-16">
+        <div className="text-center space-y-8 mb-16">
+          <div className="flex items-center justify-center gap-3 animate-slide-up">
+            <Trophy className="h-16 w-16 text-secondary animate-pulse-glow" />
+            <h1 className="text-5xl md:text-6xl font-bold text-white">
+              ₹1 Daily Quiz
+            </h1>
+          </div>
+          
+          <p className="text-xl md:text-2xl text-white/90 max-w-2xl mx-auto animate-slide-up">
+            Test your knowledge across <span className="text-secondary font-bold">General Knowledge, Sports, Current Affairs, History, Movies & More</span>
+          </p>
+
+          <div className="flex flex-col sm:flex-row gap-4 justify-center animate-slide-up">
+            <Button
+              onClick={() => navigate('/auth')}
+              size="lg"
+              className="bg-gradient-gold text-lg px-8 py-6 shadow-lg hover:shadow-xl transition-all"
+            >
+              <Zap className="mr-2 h-5 w-5" />
+              Get Started Now
+            </Button>
+            <Button
+              onClick={() => navigate('/leaderboard')}
+              size="lg"
+              variant="outline"
+              className="bg-white/10 text-white border-white/30 hover:bg-white/20 text-lg px-8 py-6"
+            >
+              <Trophy className="mr-2 h-5 w-5" />
+              View Leaderboard
+            </Button>
+          </div>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-6 mb-16">
+          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20 text-center hover:bg-white/20 transition-all">
+            <IndianRupee className="h-12 w-12 text-secondary mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-white mb-2">Just ₹1 Entry</h3>
+            <p className="text-white/80">Pay only ₹1 to participate in daily quiz</p>
+          </div>
+
+          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20 text-center hover:bg-white/20 transition-all">
+            <Award className="h-12 w-12 text-secondary mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-white mb-2">Win Big Prizes</h3>
+            <p className="text-white/80">Top scorers win cash prizes daily</p>
+          </div>
+
+          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20 text-center hover:bg-white/20 transition-all">
+            <Clock className="h-12 w-12 text-secondary mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-white mb-2">Results at 9 PM</h3>
+            <p className="text-white/80">Daily results published at 9 PM IST</p>
+          </div>
+        </div>
+
+        <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20">
+          <h2 className="text-3xl font-bold text-white text-center mb-8">How It Works</h2>
+          
+          <div className="grid md:grid-cols-4 gap-6">
+            <div className="text-center">
+              <div className="bg-secondary/20 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl font-bold text-white">1</span>
+              </div>
+              <h4 className="font-semibold text-white mb-2">Register</h4>
+              <p className="text-white/70 text-sm">Create your free account</p>
+            </div>
+
+            <div className="text-center">
+              <div className="bg-secondary/20 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl font-bold text-white">2</span>
+              </div>
+              <h4 className="font-semibold text-white mb-2">Pay ₹1</h4>
+              <p className="text-white/70 text-sm">Quick UPI payment via Razorpay</p>
+            </div>
+
+            <div className="text-center">
+              <div className="bg-secondary/20 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl font-bold text-white">3</span>
+              </div>
+              <h4 className="font-semibold text-white mb-2">Take Quiz</h4>
+              <p className="text-white/70 text-sm">Answer questions correctly</p>
+            </div>
+
+            <div className="text-center">
+              <div className="bg-secondary/20 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl font-bold text-white">4</span>
+              </div>
+              <h4 className="font-semibold text-white mb-2">Win Prizes</h4>
+              <p className="text-white/70 text-sm">Top scorers win cash!</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="text-center mt-12">
+          <p className="text-white/70 mb-4">
+            Join thousands of quiz enthusiasts competing daily
+          </p>
+          <Button
+            onClick={() => navigate('/auth')}
+            size="lg"
+            className="bg-white text-primary hover:bg-white/90 text-lg px-8 py-6"
+          >
+            Start Playing Today
+          </Button>
+        </div>
       </div>
     </div>
   );
