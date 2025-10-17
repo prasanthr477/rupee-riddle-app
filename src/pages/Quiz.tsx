@@ -8,6 +8,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Clock, Trophy, ArrowRight } from 'lucide-react';
+import { HomeButton } from '@/components/HomeButton';
 
 const Quiz = () => {
   const { user } = useAuth();
@@ -124,6 +125,7 @@ const Quiz = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-4">
+      <HomeButton />
       <div className="max-w-3xl mx-auto space-y-6 py-8">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-4">

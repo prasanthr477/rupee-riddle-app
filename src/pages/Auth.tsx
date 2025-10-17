@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { Trophy, Zap } from 'lucide-react';
 import { z } from 'zod';
+import { HomeButton } from '@/components/HomeButton';
 
 const signupSchema = z.object({
   fullName: z.string().trim().min(1, 'Name is required').max(100),
@@ -108,6 +109,7 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-primary p-4">
+      <HomeButton />
       <Card className="w-full max-w-md shadow-2xl">
         <CardHeader className="text-center">
           <div className="flex items-center justify-center gap-2 mb-2">

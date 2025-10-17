@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Trophy, Calendar, IndianRupee, Clock, LogOut, Shield } from 'lucide-react';
 import { toast } from 'sonner';
+import { HomeButton } from '@/components/HomeButton';
 
 const Dashboard = () => {
   const { user, loading, signOut, isAdmin } = useAuth();
@@ -77,6 +78,7 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-4">
+      <HomeButton />
       <div className="max-w-4xl mx-auto space-y-6 py-8">
         <div className="flex justify-between items-center">
           <div>

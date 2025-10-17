@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Trophy, Medal, ArrowLeft, Clock } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { HomeButton } from '@/components/HomeButton';
 
 const Leaderboard = () => {
   const { user } = useAuth();
@@ -62,6 +63,7 @@ const Leaderboard = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-4">
+      <HomeButton />
       <div className="max-w-4xl mx-auto space-y-6 py-8">
         <div className="flex items-center gap-4">
           <Button onClick={() => navigate('/dashboard')} variant="ghost">

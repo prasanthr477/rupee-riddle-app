@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { IndianRupee, ArrowLeft, AlertCircle } from 'lucide-react';
+import { HomeButton } from '@/components/HomeButton';
 
 const Payment = () => {
   const { user } = useAuth();
@@ -28,6 +29,7 @@ const Payment = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-4">
+      <HomeButton />
       <div className="max-w-md mx-auto space-y-6 py-8">
         <Button
           onClick={() => navigate('/dashboard')}
