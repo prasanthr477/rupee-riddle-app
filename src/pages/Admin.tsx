@@ -30,6 +30,8 @@ const Admin = () => {
     correct_option: 'A',
     category: '',
   }]);
+  const [sheetsUrl, setSheetsUrl] = useState('');
+  const [importing, setImporting] = useState(false);
 
   useEffect(() => {
     if (!user || !isAdmin) {
@@ -58,6 +60,46 @@ const Admin = () => {
     const updated = [...questions];
     updated[index] = { ...updated[index], [field]: value };
     setQuestions(updated);
+  };
+
+  const handleImportFromSheets = async () => {
+    if (!sheetsUrl) {
+      toast.error('Please enter a Google Sheets URL');
+      return;
+    }
+
+    if (!quizData.title) {
+      toast.error('Please fill in quiz title');
+      return;
+    }
+
+    setImporting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('import-quiz-from-sheets', {
+        body: {
+          spreadsheetUrl: sheetsUrl,
+          quizDate: quizData.quiz_date,
+          title: quizData.title,
+          description: quizData.description,
+          entryFee: quizData.entry_fee,
+          prizeAmount: quizData.prize_amount,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        toast.success(`Quiz imported! ${data.questionsCount} questions added.`);
+        navigate('/dashboard');
+      } else {
+        toast.error(data.error || 'Failed to import quiz');
+      }
+    } catch (error: any) {
+      console.error('Import error:', error);
+      toast.error(error.message || 'Failed to import from Google Sheets');
+    } finally {
+      setImporting(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -156,6 +198,34 @@ const Admin = () => {
                 onChange={(e) => setQuizData({ ...quizData, prize_amount: parseFloat(e.target.value) })}
               />
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-lg border-2 border-primary/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              📊 Import from Google Sheets
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>Google Sheets URL</Label>
+              <Input
+                value={sheetsUrl}
+                onChange={(e) => setSheetsUrl(e.target.value)}
+                placeholder="https://docs.google.com/spreadsheets/d/..."
+              />
+              <p className="text-sm text-muted-foreground">
+                Sheet should have columns: Question | Option A | Option B | Option C | Option D | Correct (A/B/C/D) | Category
+              </p>
+            </div>
+            <Button 
+              onClick={handleImportFromSheets} 
+              disabled={importing}
+              className="w-full bg-gradient-primary"
+            >
+              {importing ? 'Importing...' : 'Import Quiz from Sheets'}
+            </Button>
           </CardContent>
         </Card>
 
