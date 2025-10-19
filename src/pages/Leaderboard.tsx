@@ -33,7 +33,7 @@ const Leaderboard = () => {
       .from('quiz_attempts')
       .select(`
         *,
-        profiles:user_id (
+        profiles_public:user_id (
           full_name
         )
       `)
@@ -112,7 +112,7 @@ const Leaderboard = () => {
                     </div>
                     <div className="flex-1">
                       <p className={`font-semibold ${index < 3 ? 'text-lg' : ''}`}>
-                        {leader.profiles?.full_name || 'Anonymous'}
+                        {leader.profiles_public?.full_name || 'Anonymous'}
                         {user?.id === leader.user_id && (
                           <span className="ml-2 text-sm text-primary">(You)</span>
                         )}

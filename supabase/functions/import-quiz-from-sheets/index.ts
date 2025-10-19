@@ -21,12 +21,56 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Authenticate the user
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      throw new Error('Missing authorization header');
+    }
+
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    if (userError || !user) {
+      throw new Error('Unauthorized');
+    }
+
+    // Verify admin role
+    const { data: isAdmin, error: roleError } = await supabaseClient.rpc('has_role', {
+      _user_id: user.id,
+      _role: 'admin'
+    });
+
+    if (roleError || !isAdmin) {
+      throw new Error('Admin access required');
+    }
+
+    // Use service role key for database operations
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
     const { spreadsheetUrl, quizDate, title, description, entryFee, prizeAmount } = await req.json();
+
+    // Validate Google Sheets URL
+    const validateSheetsUrl = (url: string): boolean => {
+      try {
+        const parsed = new URL(url);
+        return parsed.protocol === 'https:' && 
+               parsed.hostname === 'docs.google.com' &&
+               /\/d\/[a-zA-Z0-9-_]+/.test(parsed.pathname);
+      } catch {
+        return false;
+      }
+    };
+
+    if (!validateSheetsUrl(spreadsheetUrl)) {
+      throw new Error('Invalid Google Sheets URL. Must be a valid https://docs.google.com URL');
+    }
 
     console.log('Importing quiz from Google Sheets:', { spreadsheetUrl, quizDate, title });
 
@@ -74,6 +118,12 @@ Deno.serve(async (req) => {
 
     console.log(`Found ${rows.length} questions in spreadsheet`);
 
+    // Limit number of questions to prevent DoS
+    const maxQuestions = 100;
+    if (rows.length > maxQuestions) {
+      throw new Error(`Too many questions. Maximum allowed: ${maxQuestions}`);
+    }
+
     // Create quiz
     const { data: quiz, error: quizError } = await supabase
       .from('daily_quizzes')
@@ -95,17 +145,30 @@ Deno.serve(async (req) => {
 
     console.log('Quiz created:', quiz.id);
 
+    // Sanitize and validate imported data
+    const sanitize = (text: string, maxLength: number = 500): string => {
+      return String(text || '').trim().substring(0, maxLength);
+    };
+
+    const validateCorrectOption = (option: string): string => {
+      const normalized = option.trim().toUpperCase();
+      if (!['A', 'B', 'C', 'D'].includes(normalized)) {
+        throw new Error(`Invalid correct_option: ${option}. Must be A, B, C, or D`);
+      }
+      return normalized;
+    };
+
     // Prepare questions
     const questions: Question[] = rows.map((row: string[], index: number) => ({
       quiz_id: quiz.id,
       question_order: index + 1,
-      question_text: row[0] || '',
-      option_a: row[1] || '',
-      option_b: row[2] || '',
-      option_c: row[3] || '',
-      option_d: row[4] || '',
-      correct_option: row[5] || '',
-      category: row[6] || 'General',
+      question_text: sanitize(row[0]),
+      option_a: sanitize(row[1]),
+      option_b: sanitize(row[2]),
+      option_c: sanitize(row[3]),
+      option_d: sanitize(row[4]),
+      correct_option: validateCorrectOption(row[5]),
+      category: row[6] ? sanitize(row[6], 100) : 'General',
     }));
 
     // Insert questions

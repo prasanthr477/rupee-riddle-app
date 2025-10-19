@@ -1,1 +1,4 @@
 project_id = "larftdmdsegcnxplyfiw"
+
+[functions.import-quiz-from-sheets]
+verify_jwt = true
