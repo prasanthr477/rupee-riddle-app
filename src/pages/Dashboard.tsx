@@ -173,7 +173,7 @@ const Dashboard = () => {
                 </Button>
               ) : (
                 <Button
-                  onClick={() => navigate('/payment')}
+                  onClick={() => navigate('/payment', { state: { quizId: todayQuiz.id } })}
                   className="w-full bg-gradient-gold text-lg py-6"
                 >
                   <IndianRupee className="mr-2 h-5 w-5" />
