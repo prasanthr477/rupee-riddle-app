@@ -2,6 +2,7 @@ project_id = "larftdmdsegcnxplyfiw"
 
 [functions.create-razorpay-order]
 [functions.verify-razorpay-payment]
+[functions.submit-quiz]
 
 [functions.import-quiz-from-sheets]
 verify_jwt = true

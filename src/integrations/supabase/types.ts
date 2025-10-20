@@ -171,6 +171,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_quiz_attempts_payment"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "quiz_attempts_payment_id_fkey"
             columns: ["payment_id"]
             isOneToOne: false

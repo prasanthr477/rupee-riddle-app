@@ -67,46 +67,46 @@ const Quiz = () => {
     if (!user || !todayQuiz) return;
     
     setLoading(true);
-    
-    let score = 0;
-    questions.forEach((q) => {
-      if (answers[q.id] === q.correct_option) {
-        score += 10;
+
+    try {
+      const { data: payment } = await supabase
+        .from('payments')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('quiz_id', todayQuiz.id)
+        .eq('status', 'success')
+        .single();
+
+      if (!payment) {
+        toast.error('Payment verification failed');
+        setLoading(false);
+        return;
       }
-    });
 
-    const { data: payment } = await supabase
-      .from('payments')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('quiz_id', todayQuiz.id)
-      .eq('status', 'success')
-      .single();
+      // Submit quiz via edge function for server-side validation
+      const { data: result, error: submitError } = await supabase.functions.invoke(
+        'submit-quiz',
+        {
+          body: {
+            quizId: todayQuiz.id,
+            paymentId: payment.id,
+            answers: answers,
+            timeSpentSeconds: timeSpent,
+          },
+        }
+      );
 
-    if (!payment) {
-      toast.error('Payment verification failed');
-      setLoading(false);
-      return;
-    }
+      if (submitError) throw submitError;
+      if (result.error) throw new Error(result.error);
 
-    const { error } = await supabase.from('quiz_attempts').upsert({
-      user_id: user.id,
-      quiz_id: todayQuiz.id,
-      payment_id: payment.id,
-      score,
-      time_spent_seconds: timeSpent,
-      answers,
-      submitted_at: new Date().toISOString(),
-    });
-
-    if (error) {
-      toast.error('Error submitting quiz');
-    } else {
-      toast.success('Quiz submitted successfully!');
+      toast.success(`Quiz submitted! Score: ${result.score}/${result.totalQuestions}`);
       navigate('/dashboard');
+    } catch (error) {
+      console.error('Error submitting quiz:', error);
+      toast.error('Failed to submit quiz');
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   };
 
   const formatTime = (seconds: number) => {
