@@ -53,8 +53,8 @@ const Quiz = () => {
     setTodayQuiz(quiz);
 
     const { data: questionsData } = await supabase
-      .from('quiz_questions_public')
-      .select('*')
+      .from('quiz_questions')
+      .select('id, quiz_id, question_text, option_a, option_b, option_c, option_d, question_order, category, created_at')
       .eq('quiz_id', quiz.id)
       .order('question_order');
 
