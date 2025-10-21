@@ -27,8 +27,28 @@ serve(async (req) => {
       throw new Error('Unauthorized');
     }
 
-    const { quizId, amount } = await req.json();
-    console.log('Creating Razorpay order for user:', user.id, 'quiz:', quizId, 'amount:', amount);
+    const { quizId } = await req.json();
+    console.log('Creating Razorpay order for user:', user.id, 'quiz:', quizId);
+
+    // Fetch actual quiz details from database to prevent amount manipulation
+    const { data: quiz, error: quizError } = await supabaseClient
+      .from('daily_quizzes')
+      .select('entry_fee, is_active')
+      .eq('id', quizId)
+      .single();
+
+    if (quizError || !quiz) {
+      console.error('Quiz not found:', quizError);
+      throw new Error('Quiz not found');
+    }
+
+    if (!quiz.is_active) {
+      throw new Error('Quiz is not active');
+    }
+
+    // Use database amount only - never trust client input
+    const amount = quiz.entry_fee;
+    console.log('Using quiz entry fee from database:', amount);
 
     const razorpayKeyId = Deno.env.get('RAZORPAY_KEY_ID');
     const razorpayKeySecret = Deno.env.get('RAZORPAY_KEY_SECRET');

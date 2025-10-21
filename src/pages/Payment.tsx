@@ -71,13 +71,12 @@ const Payment = () => {
 
     setLoading(true);
     try {
-      // Create Razorpay order
+      // Create Razorpay order - amount is fetched server-side for security
       const { data: orderData, error: orderError } = await supabase.functions.invoke(
         'create-razorpay-order',
         {
           body: {
             quizId: quiz.id,
-            amount: quiz.entry_fee,
           },
         }
       );
