@@ -12,33 +12,49 @@ serve(async (req) => {
   }
 
   try {
+    const { quizId, paymentId, answers, timeSpentSeconds, deviceFingerprint, isAnonymous } = await req.json();
+    
+    let userId = null;
+    if (!isAnonymous) {
+      const supabaseClient = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+        {
+          global: {
+            headers: { Authorization: req.headers.get('Authorization')! },
+          },
+        }
+      );
+      
+      const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+      if (userError || !user) {
+        throw new Error('Unauthorized');
+      }
+      userId = user.id;
+    }
+    
+    console.log('Submitting quiz:', { quizId, paymentId, isAnonymous });
+    
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
-        },
-      }
     );
 
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
-    if (userError || !user) {
-      throw new Error('Unauthorized');
-    }
-
-    const { quizId, paymentId, answers, timeSpentSeconds } = await req.json();
-    console.log('Submitting quiz:', { quizId, paymentId, userId: user.id });
-
     // Verify payment exists and is successful
-    const { data: payment, error: paymentError } = await supabaseClient
+    let paymentQuery = supabaseClient
       .from('payments')
       .select('*')
       .eq('id', paymentId)
-      .eq('user_id', user.id)
       .eq('quiz_id', quizId)
-      .eq('status', 'success')
-      .single();
+      .eq('status', 'success');
+    
+    if (isAnonymous) {
+      paymentQuery = paymentQuery.eq('device_fingerprint', deviceFingerprint).eq('is_anonymous', true);
+    } else {
+      paymentQuery = paymentQuery.eq('user_id', userId);
+    }
+
+    const { data: payment, error: paymentError } = await paymentQuery.single();
 
     if (paymentError || !payment) {
       console.error('Invalid payment:', paymentError);
@@ -86,17 +102,25 @@ serve(async (req) => {
     const validTimeSpent = Math.max(0, Math.min(timeSpentSeconds, 86400));
 
     // Insert quiz attempt with validated data
+    const attemptData: any = {
+      quiz_id: quizId,
+      payment_id: paymentId,
+      score: score,
+      answers: validatedAnswers,
+      time_spent_seconds: validTimeSpent,
+      submitted_at: new Date().toISOString(),
+      is_anonymous: isAnonymous || false,
+    };
+    
+    if (isAnonymous) {
+      attemptData.device_fingerprint = deviceFingerprint;
+    } else {
+      attemptData.user_id = userId;
+    }
+
     const { data: attempt, error: attemptError } = await supabaseClient
       .from('quiz_attempts')
-      .insert({
-        user_id: user.id,
-        quiz_id: quizId,
-        payment_id: paymentId,
-        score: score,
-        answers: validatedAnswers,
-        time_spent_seconds: validTimeSpent,
-        submitted_at: new Date().toISOString(),
-      })
+      .insert(attemptData)
       .select()
       .single();
 

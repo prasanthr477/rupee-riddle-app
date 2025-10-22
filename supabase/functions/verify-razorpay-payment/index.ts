@@ -13,23 +13,32 @@ serve(async (req) => {
   }
 
   try {
+    const { orderId, paymentId, signature, deviceFingerprint, isAnonymous } = await req.json();
+    console.log('Verifying Razorpay payment:', { orderId, paymentId, isAnonymous });
+
+    let userId = null;
+    if (!isAnonymous) {
+      const supabaseClient = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+        {
+          global: {
+            headers: { Authorization: req.headers.get('Authorization')! },
+          },
+        }
+      );
+      
+      const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+      if (userError || !user) {
+        throw new Error('Unauthorized');
+      }
+      userId = user.id;
+    }
+    
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
-        },
-      }
     );
-
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
-    if (userError || !user) {
-      throw new Error('Unauthorized');
-    }
-
-    const { orderId, paymentId, signature } = await req.json();
-    console.log('Verifying Razorpay payment:', { orderId, paymentId });
 
     const razorpayKeySecret = Deno.env.get('RAZORPAY_KEY_SECRET');
     if (!razorpayKeySecret) {
@@ -68,15 +77,22 @@ serve(async (req) => {
     console.log('Signature verified successfully');
 
     // Update payment record
-    const { data: payment, error: updateError } = await supabaseClient
+    let updateQuery = supabaseClient
       .from('payments')
       .update({
         payment_id: paymentId,
         signature: signature,
         status: 'success',
       })
-      .eq('order_id', orderId)
-      .eq('user_id', user.id)
+      .eq('order_id', orderId);
+    
+    if (isAnonymous) {
+      updateQuery = updateQuery.eq('device_fingerprint', deviceFingerprint).eq('is_anonymous', true);
+    } else {
+      updateQuery = updateQuery.eq('user_id', userId);
+    }
+
+    const { data: payment, error: updateError } = await updateQuery
       .select()
       .single();
 

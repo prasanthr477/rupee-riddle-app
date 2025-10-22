@@ -8,6 +8,7 @@ import { IndianRupee, ArrowLeft } from 'lucide-react';
 import { HomeButton } from '@/components/HomeButton';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { getDeviceFingerprint } from '@/utils/deviceFingerprint';
 
 declare global {
   interface Window {
@@ -22,20 +23,24 @@ const Payment = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [quiz, setQuiz] = useState<any>(null);
+  const [deviceFingerprint, setDeviceFingerprint] = useState<string>('');
 
   const quizId = location.state?.quizId;
+  const passedFingerprint = location.state?.deviceFingerprint;
 
   useEffect(() => {
-    if (!user) {
-      navigate('/auth');
-      return;
-    }
     if (!quizId) {
       navigate('/dashboard');
       return;
     }
+    initFingerprint();
     loadQuiz();
-  }, [user, navigate, quizId]);
+  }, [navigate, quizId]);
+
+  const initFingerprint = async () => {
+    const fp = passedFingerprint || await getDeviceFingerprint();
+    setDeviceFingerprint(fp);
+  };
 
   useEffect(() => {
     const script = document.createElement('script');
@@ -67,7 +72,7 @@ const Payment = () => {
   };
 
   const handlePayment = async () => {
-    if (!quiz || !user) return;
+    if (!quiz || !deviceFingerprint) return;
 
     setLoading(true);
     try {
@@ -77,6 +82,8 @@ const Payment = () => {
         {
           body: {
             quizId: quiz.id,
+            deviceFingerprint: deviceFingerprint,
+            isAnonymous: !user,
           },
         }
       );
@@ -99,6 +106,8 @@ const Payment = () => {
                 orderId: response.razorpay_order_id,
                 paymentId: response.razorpay_payment_id,
                 signature: response.razorpay_signature,
+                deviceFingerprint: deviceFingerprint,
+                isAnonymous: !user,
               },
             }
           );
@@ -119,7 +128,7 @@ const Payment = () => {
           navigate('/dashboard');
         },
         prefill: {
-          email: user.email,
+          email: user?.email || '',
         },
         theme: {
           color: '#F97316',

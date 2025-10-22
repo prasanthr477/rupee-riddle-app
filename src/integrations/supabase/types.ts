@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      announcements: {
+        Row: {
+          announcement_type: string
+          content: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean | null
+          title: string
+        }
+        Insert: {
+          announcement_type: string
+          content: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          title: string
+        }
+        Update: {
+          announcement_type?: string
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          title?: string
+        }
+        Relationships: []
+      }
       daily_quizzes: {
         Row: {
           created_at: string | null
@@ -57,35 +87,41 @@ export type Database = {
         Row: {
           amount: number
           created_at: string | null
+          device_fingerprint: string | null
           id: string
+          is_anonymous: boolean | null
           order_id: string | null
           payment_id: string | null
           quiz_id: string
           signature: string | null
           status: string | null
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           amount: number
           created_at?: string | null
+          device_fingerprint?: string | null
           id?: string
+          is_anonymous?: boolean | null
           order_id?: string | null
           payment_id?: string | null
           quiz_id: string
           signature?: string | null
           status?: string | null
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           amount?: number
           created_at?: string | null
+          device_fingerprint?: string | null
           id?: string
+          is_anonymous?: boolean | null
           order_id?: string | null
           payment_id?: string | null
           quiz_id?: string
           signature?: string | null
           status?: string | null
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -132,7 +168,9 @@ export type Database = {
         Row: {
           answers: Json | null
           created_at: string | null
+          device_fingerprint: string | null
           id: string
+          is_anonymous: boolean | null
           payment_id: string
           quiz_id: string
           score: number | null
@@ -143,7 +181,9 @@ export type Database = {
         Insert: {
           answers?: Json | null
           created_at?: string | null
+          device_fingerprint?: string | null
           id?: string
+          is_anonymous?: boolean | null
           payment_id: string
           quiz_id: string
           score?: number | null
@@ -154,7 +194,9 @@ export type Database = {
         Update: {
           answers?: Json | null
           created_at?: string | null
+          device_fingerprint?: string | null
           id?: string
+          is_anonymous?: boolean | null
           payment_id?: string
           quiz_id?: string
           score?: number | null

@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Trophy, Calendar, IndianRupee, Clock, LogOut, Shield } from 'lucide-react';
 import { toast } from 'sonner';
 import { HomeButton } from '@/components/HomeButton';
+import { AnnouncementsBanner } from '@/components/AnnouncementsBanner';
+import { getDeviceFingerprint } from '@/utils/deviceFingerprint';
 
 const Dashboard = () => {
   const { user, loading, signOut, isAdmin } = useAuth();
@@ -14,20 +16,24 @@ const Dashboard = () => {
   const [todayQuiz, setTodayQuiz] = useState<any>(null);
   const [paymentStatus, setPaymentStatus] = useState<any>(null);
   const [quizAttempt, setQuizAttempt] = useState<any>(null);
+  const [deviceFingerprint, setDeviceFingerprint] = useState<string>('');
 
   useEffect(() => {
-    if (!loading && !user) {
-      navigate('/auth');
-    }
-  }, [user, loading, navigate]);
+    loadTodayQuiz();
+    initDeviceFingerprint();
+  }, []);
 
   useEffect(() => {
-    if (user) {
-      loadTodayQuiz();
+    if (todayQuiz && deviceFingerprint) {
       checkPaymentStatus();
       checkQuizAttempt();
     }
-  }, [user]);
+  }, [todayQuiz, user, deviceFingerprint]);
+
+  const initDeviceFingerprint = async () => {
+    const fp = await getDeviceFingerprint();
+    setDeviceFingerprint(fp);
+  };
 
   const loadTodayQuiz = async () => {
     const today = new Date().toISOString().split('T')[0];
@@ -42,29 +48,39 @@ const Dashboard = () => {
   };
 
   const checkPaymentStatus = async () => {
-    if (!todayQuiz || !user) return;
+    if (!todayQuiz) return;
     
-    const { data } = await supabase
+    let query = supabase
       .from('payments')
       .select('*')
-      .eq('user_id', user.id)
       .eq('quiz_id', todayQuiz.id)
-      .eq('status', 'success')
-      .maybeSingle();
+      .eq('status', 'success');
     
+    if (user) {
+      query = query.eq('user_id', user.id);
+    } else {
+      query = query.eq('device_fingerprint', deviceFingerprint).eq('is_anonymous', true);
+    }
+    
+    const { data } = await query.maybeSingle();
     setPaymentStatus(data);
   };
 
   const checkQuizAttempt = async () => {
-    if (!todayQuiz || !user) return;
+    if (!todayQuiz) return;
     
-    const { data } = await supabase
+    let query = supabase
       .from('quiz_attempts')
       .select('*')
-      .eq('user_id', user.id)
-      .eq('quiz_id', todayQuiz.id)
-      .maybeSingle();
+      .eq('quiz_id', todayQuiz.id);
     
+    if (user) {
+      query = query.eq('user_id', user.id);
+    } else {
+      query = query.eq('device_fingerprint', deviceFingerprint).eq('is_anonymous', true);
+    }
+    
+    const { data } = await query.maybeSingle();
     setQuizAttempt(data);
   };
 
@@ -86,21 +102,32 @@ const Dashboard = () => {
               <Trophy className="h-8 w-8 text-secondary" />
               ₹1 Daily Quiz
             </h1>
-            <p className="text-muted-foreground">Welcome back, {user?.email}</p>
+            <p className="text-muted-foreground">
+              {user ? `Welcome back, ${user.email}` : 'Welcome, Guest User'}
+            </p>
           </div>
           <div className="flex gap-2">
+            {!user && (
+              <Button onClick={() => navigate('/auth')} variant="outline">
+                Sign Up
+              </Button>
+            )}
             {isAdmin && (
               <Button onClick={() => navigate('/admin')} variant="outline">
                 <Shield className="mr-2 h-4 w-4" />
                 Admin
               </Button>
             )}
-            <Button onClick={signOut} variant="outline">
-              <LogOut className="mr-2 h-4 w-4" />
-              Logout
-            </Button>
+            {user && (
+              <Button onClick={signOut} variant="outline">
+                <LogOut className="mr-2 h-4 w-4" />
+                Logout
+              </Button>
+            )}
           </div>
         </div>
+
+        <AnnouncementsBanner />
 
         {!todayQuiz ? (
           <Card>
@@ -173,12 +200,18 @@ const Dashboard = () => {
                 </Button>
               ) : (
                 <Button
-                  onClick={() => navigate('/payment', { state: { quizId: todayQuiz.id } })}
+                  onClick={() => navigate('/payment', { state: { quizId: todayQuiz.id, deviceFingerprint } })}
                   className="w-full bg-gradient-gold text-lg py-6"
                 >
                   <IndianRupee className="mr-2 h-5 w-5" />
                   Pay ₹{todayQuiz.entry_fee} to Start
                 </Button>
+              )}
+              
+              {!user && (
+                <p className="text-sm text-muted-foreground text-center">
+                  💡 <strong>Tip:</strong> Sign up to receive notifications for quiz starts & winners!
+                </p>
               )}
 
               <Button

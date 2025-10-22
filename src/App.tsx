@@ -11,6 +11,7 @@ import Payment from "./pages/Payment";
 import Quiz from "./pages/Quiz";
 import Leaderboard from "./pages/Leaderboard";
 import Admin from "./pages/Admin";
+import Announcements from "./pages/Announcements";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/quiz" element={<Quiz />} />
             <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/admin" element={<Admin />} />
+            <Route path="/announcements" element={<Announcements />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

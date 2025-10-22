@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Clock, Trophy, ArrowRight } from 'lucide-react';
 import { HomeButton } from '@/components/HomeButton';
+import { getDeviceFingerprint } from '@/utils/deviceFingerprint';
 
 const Quiz = () => {
   const { user } = useAuth();
@@ -19,21 +20,23 @@ const Quiz = () => {
   const [timeSpent, setTimeSpent] = useState(0);
   const [loading, setLoading] = useState(false);
   const [todayQuiz, setTodayQuiz] = useState<any>(null);
+  const [deviceFingerprint, setDeviceFingerprint] = useState<string>('');
 
   useEffect(() => {
-    if (!user) {
-      navigate('/auth');
-      return;
-    }
-    
     const timer = setInterval(() => {
       setTimeSpent(prev => prev + 1);
     }, 1000);
 
+    initFingerprint();
     loadQuiz();
 
     return () => clearInterval(timer);
-  }, [user, navigate]);
+  }, [navigate]);
+
+  const initFingerprint = async () => {
+    const fp = await getDeviceFingerprint();
+    setDeviceFingerprint(fp);
+  };
 
   const loadQuiz = async () => {
     const today = new Date().toISOString().split('T')[0];
@@ -64,18 +67,24 @@ const Quiz = () => {
   };
 
   const handleSubmit = async () => {
-    if (!user || !todayQuiz) return;
+    if (!todayQuiz || !deviceFingerprint) return;
     
     setLoading(true);
 
     try {
-      const { data: payment } = await supabase
+      let query = supabase
         .from('payments')
         .select('id')
-        .eq('user_id', user.id)
         .eq('quiz_id', todayQuiz.id)
-        .eq('status', 'success')
-        .single();
+        .eq('status', 'success');
+      
+      if (user) {
+        query = query.eq('user_id', user.id);
+      } else {
+        query = query.eq('device_fingerprint', deviceFingerprint).eq('is_anonymous', true);
+      }
+
+      const { data: payment } = await query.single();
 
       if (!payment) {
         toast.error('Payment verification failed');
@@ -92,6 +101,8 @@ const Quiz = () => {
             paymentId: payment.id,
             answers: answers,
             timeSpentSeconds: timeSpent,
+            deviceFingerprint: deviceFingerprint,
+            isAnonymous: !user,
           },
         }
       );

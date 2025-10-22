@@ -1,10 +1,28 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Trophy, Zap, IndianRupee, Clock, Award, Users } from 'lucide-react';
+import { Trophy, Zap, IndianRupee, Clock, Award, Users, Bell } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { Card } from '@/components/ui/card';
 
 const Index = () => {
   const navigate = useNavigate();
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+
+  useEffect(() => {
+    loadAnnouncements();
+  }, []);
+
+  const loadAnnouncements = async () => {
+    const { data } = await supabase
+      .from('announcements')
+      .select('*')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+      .limit(3);
+    
+    if (data) setAnnouncements(data);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary via-primary/90 to-primary/70">
@@ -21,6 +39,24 @@ const Index = () => {
             Test your knowledge across <span className="text-secondary font-bold">General Knowledge, Sports, Current Affairs, History, Movies & More</span>
           </p>
 
+          {announcements.length > 0 && (
+            <div className="mb-6 animate-slide-up">
+              <Card className="bg-secondary/20 border-secondary/40 p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Bell className="h-5 w-5 text-secondary" />
+                  <h3 className="font-semibold text-white">Latest Announcements</h3>
+                </div>
+                <div className="space-y-2">
+                  {announcements.map((announcement) => (
+                    <div key={announcement.id} className="text-white/80 text-sm">
+                      • {announcement.title}
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </div>
+          )}
+
           <div className="flex flex-col sm:flex-row gap-4 justify-center animate-slide-up">
             <Button
               onClick={() => navigate('/auth')}
@@ -28,18 +64,22 @@ const Index = () => {
               className="bg-gradient-gold text-lg px-8 py-6 shadow-lg hover:shadow-xl transition-all"
             >
               <Zap className="mr-2 h-5 w-5" />
-              Get Started Now
+              Sign Up / Register
             </Button>
             <Button
-              onClick={() => navigate('/leaderboard')}
+              onClick={() => navigate('/dashboard')}
               size="lg"
               variant="outline"
               className="bg-white/10 text-white border-white/30 hover:bg-white/20 text-lg px-8 py-6"
             >
-              <Trophy className="mr-2 h-5 w-5" />
-              View Leaderboard
+              <Users className="mr-2 h-5 w-5" />
+              Continue as Guest
             </Button>
           </div>
+          
+          <p className="text-white/70 text-sm mt-4 animate-slide-up">
+            <strong>Registered users</strong> get email/SMS notifications for quiz starts, winners & announcements!
+          </p>
         </div>
 
         <div className="grid md:grid-cols-3 gap-6 mb-16">

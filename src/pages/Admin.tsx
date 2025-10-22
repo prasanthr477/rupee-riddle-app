@@ -141,10 +141,15 @@ const Admin = () => {
     <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-4">
       <HomeButton />
       <div className="max-w-4xl mx-auto space-y-6 py-8">
-        <Button onClick={() => navigate('/dashboard')} variant="ghost">
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Dashboard
-        </Button>
+        <div className="flex justify-between items-center mb-6">
+          <Button onClick={() => navigate('/dashboard')} variant="ghost">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Dashboard
+          </Button>
+          <Button onClick={() => navigate('/announcements')} variant="outline">
+            📢 Manage Announcements
+          </Button>
+        </div>
 
         <Card className="shadow-lg">
           <CardHeader>

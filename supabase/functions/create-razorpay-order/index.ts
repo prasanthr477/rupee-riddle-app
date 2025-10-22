@@ -22,13 +22,18 @@ serve(async (req) => {
       }
     );
 
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
-    if (userError || !user) {
-      throw new Error('Unauthorized');
+    const { quizId, deviceFingerprint, isAnonymous } = await req.json();
+    
+    let userId = null;
+    if (!isAnonymous) {
+      const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+      if (userError || !user) {
+        throw new Error('Unauthorized');
+      }
+      userId = user.id;
     }
-
-    const { quizId } = await req.json();
-    console.log('Creating Razorpay order for user:', user.id, 'quiz:', quizId);
+    
+    console.log('Creating Razorpay order for:', isAnonymous ? `device: ${deviceFingerprint}` : `user: ${userId}`, 'quiz:', quizId);
 
     // Fetch actual quiz details from database to prevent amount manipulation
     const { data: quiz, error: quizError } = await supabaseClient
@@ -81,15 +86,23 @@ serve(async (req) => {
     console.log('Razorpay order created:', order.id);
 
     // Create payment record in database
+    const paymentData: any = {
+      quiz_id: quizId,
+      amount: amount,
+      order_id: order.id,
+      status: 'pending',
+      is_anonymous: isAnonymous || false,
+    };
+    
+    if (isAnonymous) {
+      paymentData.device_fingerprint = deviceFingerprint;
+    } else {
+      paymentData.user_id = userId;
+    }
+
     const { data: payment, error: paymentError } = await supabaseClient
       .from('payments')
-      .insert({
-        user_id: user.id,
-        quiz_id: quizId,
-        amount: amount,
-        order_id: order.id,
-        status: 'pending',
-      })
+      .insert(paymentData)
       .select()
       .single();
 
