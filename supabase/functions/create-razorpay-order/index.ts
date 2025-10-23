@@ -22,7 +22,7 @@ serve(async (req) => {
       }
     );
 
-    const { quizId, deviceFingerprint, isAnonymous } = await req.json();
+    const { quizId, deviceFingerprint, isAnonymous, guestName, guestEmail, guestPhone } = await req.json();
     
     let userId = null;
     if (!isAnonymous) {
@@ -96,6 +96,9 @@ serve(async (req) => {
     
     if (isAnonymous) {
       paymentData.device_fingerprint = deviceFingerprint;
+      paymentData.guest_name = guestName;
+      paymentData.guest_email = guestEmail;
+      paymentData.guest_phone = guestPhone;
     } else {
       paymentData.user_id = userId;
     }

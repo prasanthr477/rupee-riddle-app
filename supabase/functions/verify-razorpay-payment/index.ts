@@ -13,7 +13,7 @@ serve(async (req) => {
   }
 
   try {
-    const { orderId, paymentId, signature, deviceFingerprint, isAnonymous } = await req.json();
+    const { orderId, paymentId, signature, deviceFingerprint, isAnonymous, guestName, guestEmail, guestPhone } = await req.json();
     console.log('Verifying Razorpay payment:', { orderId, paymentId, isAnonymous });
 
     let userId = null;
@@ -77,13 +77,22 @@ serve(async (req) => {
     console.log('Signature verified successfully');
 
     // Update payment record
+    const updateData: any = {
+      payment_id: paymentId,
+      signature: signature,
+      status: 'success',
+    };
+
+    // Update guest info if provided (in case it wasn't set during order creation)
+    if (isAnonymous && guestName && guestEmail && guestPhone) {
+      updateData.guest_name = guestName;
+      updateData.guest_email = guestEmail;
+      updateData.guest_phone = guestPhone;
+    }
+
     let updateQuery = supabaseClient
       .from('payments')
-      .update({
-        payment_id: paymentId,
-        signature: signature,
-        status: 'success',
-      })
+      .update(updateData)
       .eq('order_id', orderId);
     
     if (isAnonymous) {

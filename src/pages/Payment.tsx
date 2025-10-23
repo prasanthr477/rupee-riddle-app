@@ -9,6 +9,17 @@ import { HomeButton } from '@/components/HomeButton';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getDeviceFingerprint } from '@/utils/deviceFingerprint';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+
+const guestInfoSchema = z.object({
+  guestName: z.string().min(2, 'Name must be at least 2 characters').max(100, 'Name too long'),
+  guestEmail: z.string().email('Invalid email address').max(255, 'Email too long'),
+  guestPhone: z.string().regex(/^[0-9]{10}$/, 'Phone must be 10 digits'),
+});
 
 declare global {
   interface Window {
@@ -24,9 +35,20 @@ const Payment = () => {
   const [loading, setLoading] = useState(false);
   const [quiz, setQuiz] = useState<any>(null);
   const [deviceFingerprint, setDeviceFingerprint] = useState<string>('');
+  const [guestInfoProvided, setGuestInfoProvided] = useState(!!user);
+  const [guestInfo, setGuestInfo] = useState<any>(null);
 
   const quizId = location.state?.quizId;
   const passedFingerprint = location.state?.deviceFingerprint;
+
+  const form = useForm<z.infer<typeof guestInfoSchema>>({
+    resolver: zodResolver(guestInfoSchema),
+    defaultValues: {
+      guestName: '',
+      guestEmail: '',
+      guestPhone: '',
+    },
+  });
 
   useEffect(() => {
     if (!quizId) {
@@ -71,8 +93,21 @@ const Payment = () => {
     setQuiz(data);
   };
 
+  const onGuestInfoSubmit = (values: z.infer<typeof guestInfoSchema>) => {
+    setGuestInfo(values);
+    setGuestInfoProvided(true);
+  };
+
   const handlePayment = async () => {
     if (!quiz || !deviceFingerprint) return;
+    if (!user && !guestInfo) {
+      toast({
+        title: 'Guest Information Required',
+        description: 'Please provide your contact information',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     setLoading(true);
     try {
@@ -84,6 +119,9 @@ const Payment = () => {
             quizId: quiz.id,
             deviceFingerprint: deviceFingerprint,
             isAnonymous: !user,
+            guestName: guestInfo?.guestName,
+            guestEmail: guestInfo?.guestEmail,
+            guestPhone: guestInfo?.guestPhone,
           },
         }
       );
@@ -108,6 +146,9 @@ const Payment = () => {
                 signature: response.razorpay_signature,
                 deviceFingerprint: deviceFingerprint,
                 isAnonymous: !user,
+                guestName: guestInfo?.guestName,
+                guestEmail: guestInfo?.guestEmail,
+                guestPhone: guestInfo?.guestPhone,
               },
             }
           );
@@ -128,7 +169,9 @@ const Payment = () => {
           navigate('/dashboard');
         },
         prefill: {
-          email: user?.email || '',
+          name: user ? '' : guestInfo?.guestName,
+          email: user?.email || guestInfo?.guestEmail,
+          contact: user ? '' : guestInfo?.guestPhone,
         },
         theme: {
           color: '#F97316',
@@ -183,23 +226,101 @@ const Payment = () => {
               <p className="text-center">Loading quiz details...</p>
             ) : (
               <>
-                <div className="text-center py-8 border-2 border-dashed border-secondary/30 rounded-lg bg-secondary/5">
-                  <IndianRupee className="h-16 w-16 mx-auto mb-4 text-secondary" />
-                  <p className="text-3xl font-bold mb-2">₹{quiz.entry_fee}</p>
-                  <p className="text-muted-foreground">Entry Fee</p>
-                </div>
+                {!user && !guestInfoProvided ? (
+                  <>
+                    <Alert>
+                      <AlertDescription>
+                        As a guest, please provide your contact information so we can reach you if you win!
+                      </AlertDescription>
+                    </Alert>
 
-                <Button
-                  onClick={handlePayment}
-                  disabled={loading || !quiz}
-                  className="w-full bg-gradient-gold text-lg py-6"
-                >
-                  {loading ? 'Processing...' : 'Pay with Razorpay'}
-                </Button>
+                    <Form {...form}>
+                      <form onSubmit={form.handleSubmit(onGuestInfoSubmit)} className="space-y-4">
+                        <FormField
+                          control={form.control}
+                          name="guestName"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Full Name</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Enter your full name" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
 
-                <p className="text-sm text-center text-muted-foreground">
-                  Secure payment powered by Razorpay
-                </p>
+                        <FormField
+                          control={form.control}
+                          name="guestEmail"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Email</FormLabel>
+                              <FormControl>
+                                <Input type="email" placeholder="your@email.com" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="guestPhone"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Phone Number</FormLabel>
+                              <FormControl>
+                                <Input placeholder="10-digit phone number" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <Button type="submit" className="w-full">
+                          Continue to Payment
+                        </Button>
+                      </form>
+                    </Form>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-center py-8 border-2 border-dashed border-secondary/30 rounded-lg bg-secondary/5">
+                      <IndianRupee className="h-16 w-16 mx-auto mb-4 text-secondary" />
+                      <p className="text-3xl font-bold mb-2">₹{quiz.entry_fee}</p>
+                      <p className="text-muted-foreground">Entry Fee</p>
+                    </div>
+
+                    {!user && guestInfo && (
+                      <div className="text-sm text-muted-foreground space-y-1 p-4 bg-secondary/5 rounded-lg">
+                        <p><strong>Name:</strong> {guestInfo.guestName}</p>
+                        <p><strong>Email:</strong> {guestInfo.guestEmail}</p>
+                        <p><strong>Phone:</strong> {guestInfo.guestPhone}</p>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => setGuestInfoProvided(false)}
+                          className="mt-2"
+                        >
+                          Edit Information
+                        </Button>
+                      </div>
+                    )}
+
+                    <Button
+                      onClick={handlePayment}
+                      disabled={loading || !quiz}
+                      className="w-full bg-gradient-gold text-lg py-6"
+                    >
+                      {loading ? 'Processing...' : 'Pay with Razorpay'}
+                    </Button>
+
+                    <p className="text-sm text-center text-muted-foreground">
+                      Secure payment powered by Razorpay
+                    </p>
+                  </>
+                )}
               </>
             )}
           </CardContent>

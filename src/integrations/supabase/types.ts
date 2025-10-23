@@ -88,6 +88,9 @@ export type Database = {
           amount: number
           created_at: string | null
           device_fingerprint: string | null
+          guest_email: string | null
+          guest_name: string | null
+          guest_phone: string | null
           id: string
           is_anonymous: boolean | null
           order_id: string | null
@@ -101,6 +104,9 @@ export type Database = {
           amount: number
           created_at?: string | null
           device_fingerprint?: string | null
+          guest_email?: string | null
+          guest_name?: string | null
+          guest_phone?: string | null
           id?: string
           is_anonymous?: boolean | null
           order_id?: string | null
@@ -114,6 +120,9 @@ export type Database = {
           amount?: number
           created_at?: string | null
           device_fingerprint?: string | null
+          guest_email?: string | null
+          guest_name?: string | null
+          guest_phone?: string | null
           id?: string
           is_anonymous?: boolean | null
           order_id?: string | null

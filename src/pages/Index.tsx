@@ -110,8 +110,8 @@ const Index = () => {
               <div className="bg-secondary/20 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl font-bold text-white">1</span>
               </div>
-              <h4 className="font-semibold text-white mb-2">Register</h4>
-              <p className="text-white/70 text-sm">Create your free account</p>
+              <h4 className="font-semibold text-white mb-2">Register/Guest</h4>
+              <p className="text-white/70 text-sm">Sign up or continue as guest</p>
             </div>
 
             <div className="text-center">
@@ -144,13 +144,23 @@ const Index = () => {
           <p className="text-white/70 mb-4">
             Join thousands of quiz enthusiasts competing daily
           </p>
-          <Button
-            onClick={() => navigate('/auth')}
-            size="lg"
-            className="bg-white text-primary hover:bg-white/90 text-lg px-8 py-6"
-          >
-            Start Playing Today
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button
+              onClick={() => navigate('/auth')}
+              size="lg"
+              className="bg-white text-primary hover:bg-white/90 text-lg px-8 py-6"
+            >
+              Sign Up to Start
+            </Button>
+            <Button
+              onClick={() => navigate('/dashboard')}
+              size="lg"
+              variant="outline"
+              className="bg-white/10 text-white border-white/30 hover:bg-white/20 text-lg px-8 py-6"
+            >
+              Play as Guest
+            </Button>
+          </div>
         </div>
       </div>
     </div>
