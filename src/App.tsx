@@ -4,8 +4,10 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
+import { GuestProvider } from "./contexts/GuestContext";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import GuestRegister from "./pages/GuestRegister";
 import Dashboard from "./pages/Dashboard";
 import Payment from "./pages/Payment";
 import Quiz from "./pages/Quiz";
@@ -23,17 +25,20 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/payment" element={<Payment />} />
-            <Route path="/quiz" element={<Quiz />} />
-            <Route path="/leaderboard" element={<Leaderboard />} />
-            <Route path="/admin" element={<Admin />} />
-            <Route path="/announcements" element={<Announcements />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <GuestProvider>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/guest-register" element={<GuestRegister />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/payment" element={<Payment />} />
+              <Route path="/quiz" element={<Quiz />} />
+              <Route path="/leaderboard" element={<Leaderboard />} />
+              <Route path="/admin" element={<Admin />} />
+              <Route path="/announcements" element={<Announcements />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </GuestProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

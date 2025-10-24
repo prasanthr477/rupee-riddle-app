@@ -67,7 +67,7 @@ const Index = () => {
               Sign Up / Register
             </Button>
             <Button
-              onClick={() => navigate('/dashboard')}
+              onClick={() => navigate('/guest-register')}
               size="lg"
               variant="outline"
               className="bg-white/10 text-white border-white/30 hover:bg-white/20 text-lg px-8 py-6"
@@ -153,7 +153,7 @@ const Index = () => {
               Sign Up to Start
             </Button>
             <Button
-              onClick={() => navigate('/dashboard')}
+              onClick={() => navigate('/guest-register')}
               size="lg"
               variant="outline"
               className="bg-white/10 text-white border-white/30 hover:bg-white/20 text-lg px-8 py-6"
