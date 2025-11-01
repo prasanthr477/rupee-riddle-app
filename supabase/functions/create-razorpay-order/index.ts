@@ -72,7 +72,7 @@ serve(async (req) => {
       body: JSON.stringify({
         amount: Math.round(amount * 100), // Convert to paise
         currency: 'INR',
-        receipt: `quiz_${quizId}_${Date.now()}`,
+        receipt: `q_${Date.now()}`, // Keep under 40 chars for Razorpay
       }),
     });
 
