@@ -35,9 +35,9 @@ serve(async (req) => {
       userId = user.id;
     }
     
-    const supabaseClient = createClient(
+    const serviceClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     );
 
     const razorpayKeySecret = Deno.env.get('RAZORPAY_KEY_SECRET');
@@ -78,7 +78,7 @@ serve(async (req) => {
 
     // First, find the payment record to verify it exists
     console.log('Looking for payment with order_id:', orderId);
-    const { data: existingPayment, error: findError } = await supabaseClient
+    const { data: existingPayment, error: findError } = await serviceClient
       .from('payments')
       .select('*')
       .eq('order_id', orderId)
@@ -110,7 +110,7 @@ serve(async (req) => {
       updateData.guest_phone = guestPhone;
     }
 
-    const { data: payment, error: updateError } = await supabaseClient
+    const { data: payment, error: updateError } = await serviceClient
       .from('payments')
       .update(updateData)
       .eq('order_id', orderId)
@@ -132,8 +132,9 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error('Error in verify-razorpay-payment:', error);
+    const message = error instanceof Error ? error.message : (typeof error === 'string' ? error : JSON.stringify(error));
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+      JSON.stringify({ error: message }),
       {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
