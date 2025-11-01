@@ -89,6 +89,29 @@ const Payment = () => {
 
     setLoading(true);
     try {
+      // Prevent duplicates: check if already paid
+      let payQuery = supabase
+        .from('payments')
+        .select('id')
+        .eq('quiz_id', quiz.id)
+        .eq('status', 'success');
+      if (user) {
+        payQuery = payQuery.eq('user_id', user.id);
+      } else {
+        payQuery = payQuery.eq('is_anonymous', true).eq('device_fingerprint', deviceFingerprint);
+      }
+      const { data: existingPaid } = await payQuery.maybeSingle();
+      if (existingPaid) {
+        toast({
+          title: 'Already Paid',
+          description: 'You have already completed payment for this quiz.',
+          variant: 'destructive',
+        });
+        navigate('/quiz');
+        setLoading(false);
+        return;
+      }
+
       // Create Razorpay order - amount is fetched server-side for security
       const { data: orderData, error: orderError } = await supabase.functions.invoke(
         'create-razorpay-order',
@@ -194,9 +217,9 @@ const Payment = () => {
 
           toast({
             title: 'Payment Successful!',
-            description: 'You can now start the quiz',
+            description: 'Redirecting to the quiz...'
           });
-          navigate('/dashboard');
+          navigate('/quiz');
         },
         prefill: {
           name: user ? '' : guestDetails?.name,
