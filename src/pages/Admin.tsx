@@ -7,9 +7,20 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Sparkles, RefreshCw, Edit2, Check, X } from 'lucide-react';
 import { HomeButton } from '@/components/HomeButton';
+
+interface Question {
+  question_text: string;
+  option_a: string;
+  option_b: string;
+  option_c: string;
+  option_d: string;
+  correct_option: string;
+  category: string;
+}
 
 const Admin = () => {
   const { user, isAdmin } = useAuth();
@@ -21,7 +32,7 @@ const Admin = () => {
     entry_fee: 1.00,
     prize_amount: 0.00,
   });
-  const [questions, setQuestions] = useState<any[]>([{
+  const [questions, setQuestions] = useState<Question[]>([{
     question_text: '',
     option_a: '',
     option_b: '',
@@ -32,6 +43,15 @@ const Admin = () => {
   }]);
   const [sheetsUrl, setSheetsUrl] = useState('');
   const [importing, setImporting] = useState(false);
+  
+  // AI Generation state
+  const [aiTopic, setAiTopic] = useState('');
+  const [aiCategory, setAiCategory] = useState('');
+  const [aiQuestionCount, setAiQuestionCount] = useState(10);
+  const [generating, setGenerating] = useState(false);
+  const [selectedForRegeneration, setSelectedForRegeneration] = useState<Set<number>>(new Set());
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editedQuestion, setEditedQuestion] = useState<Question | null>(null);
 
   useEffect(() => {
     if (!user || !isAdmin) {
@@ -54,12 +74,123 @@ const Admin = () => {
 
   const removeQuestion = (index: number) => {
     setQuestions(questions.filter((_, i) => i !== index));
+    const newSelected = new Set(selectedForRegeneration);
+    newSelected.delete(index);
+    setSelectedForRegeneration(newSelected);
   };
 
   const updateQuestion = (index: number, field: string, value: string) => {
     const updated = [...questions];
     updated[index] = { ...updated[index], [field]: value };
     setQuestions(updated);
+  };
+
+  const toggleQuestionSelection = (index: number) => {
+    const newSelected = new Set(selectedForRegeneration);
+    if (newSelected.has(index)) {
+      newSelected.delete(index);
+    } else {
+      newSelected.add(index);
+    }
+    setSelectedForRegeneration(newSelected);
+  };
+
+  const startEditingQuestion = (index: number) => {
+    setEditingIndex(index);
+    setEditedQuestion({ ...questions[index] });
+  };
+
+  const cancelEditingQuestion = () => {
+    setEditingIndex(null);
+    setEditedQuestion(null);
+  };
+
+  const saveEditedQuestion = () => {
+    if (editingIndex !== null && editedQuestion) {
+      const updated = [...questions];
+      updated[editingIndex] = editedQuestion;
+      setQuestions(updated);
+      setEditingIndex(null);
+      setEditedQuestion(null);
+      toast.success('Question updated');
+    }
+  };
+
+  const handleGenerateQuestions = async () => {
+    if (!aiTopic) {
+      toast.error('Please enter a topic');
+      return;
+    }
+
+    setGenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-quiz-questions', {
+        body: {
+          topic: aiTopic,
+          category: aiCategory || 'General',
+          count: aiQuestionCount,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data.questions && Array.isArray(data.questions)) {
+        setQuestions(data.questions);
+        toast.success(`Generated ${data.questions.length} questions!`);
+        setSelectedForRegeneration(new Set());
+      } else {
+        toast.error('Invalid response from AI');
+      }
+    } catch (error: any) {
+      console.error('Generation error:', error);
+      toast.error(error.message || 'Failed to generate questions');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleRegenerateSelected = async () => {
+    if (selectedForRegeneration.size === 0) {
+      toast.error('Please select questions to regenerate');
+      return;
+    }
+
+    setGenerating(true);
+    try {
+      const questionsToRegenerate = Array.from(selectedForRegeneration).map(i => questions[i]);
+      
+      const { data, error } = await supabase.functions.invoke('generate-quiz-questions', {
+        body: {
+          topic: aiTopic,
+          category: aiCategory || 'General',
+          regenerateQuestions: questionsToRegenerate,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data.questions && Array.isArray(data.questions)) {
+        const updated = [...questions];
+        const selectedArray = Array.from(selectedForRegeneration).sort((a, b) => a - b);
+        
+        selectedArray.forEach((originalIndex, i) => {
+          if (data.questions[i]) {
+            updated[originalIndex] = data.questions[i];
+          }
+        });
+
+        setQuestions(updated);
+        setSelectedForRegeneration(new Set());
+        toast.success(`Regenerated ${data.questions.length} questions!`);
+      } else {
+        toast.error('Invalid response from AI');
+      }
+    } catch (error: any) {
+      console.error('Regeneration error:', error);
+      toast.error(error.message || 'Failed to regenerate questions');
+    } finally {
+      setGenerating(false);
+    }
   };
 
   const handleImportFromSheets = async () => {
@@ -206,6 +337,66 @@ const Admin = () => {
           </CardContent>
         </Card>
 
+        <Card className="shadow-lg border-2 border-purple-500/30 bg-gradient-to-br from-purple-500/5 to-pink-500/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-purple-500" />
+              AI Quiz Generator
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Topic *</Label>
+                <Input
+                  value={aiTopic}
+                  onChange={(e) => setAiTopic(e.target.value)}
+                  placeholder="e.g., World History, Science, Cricket"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Category</Label>
+                <Input
+                  value={aiCategory}
+                  onChange={(e) => setAiCategory(e.target.value)}
+                  placeholder="e.g., General Knowledge"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Number of Questions</Label>
+              <Input
+                type="number"
+                min="1"
+                max="50"
+                value={aiQuestionCount}
+                onChange={(e) => setAiQuestionCount(parseInt(e.target.value) || 10)}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button 
+                onClick={handleGenerateQuestions} 
+                disabled={generating}
+                className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+              >
+                <Sparkles className="mr-2 h-4 w-4" />
+                {generating ? 'Generating...' : 'Generate Questions with AI'}
+              </Button>
+              {selectedForRegeneration.size > 0 && (
+                <Button
+                  onClick={handleRegenerateSelected}
+                  disabled={generating}
+                  variant="outline"
+                  className="border-purple-500 text-purple-500 hover:bg-purple-500/10"
+                >
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Regenerate Selected ({selectedForRegeneration.size})
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
         <Card className="shadow-lg border-2 border-primary/20">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -235,7 +426,7 @@ const Admin = () => {
         </Card>
 
         <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold">Questions</h2>
+          <h2 className="text-2xl font-bold">Questions ({questions.length})</h2>
           <Button onClick={addQuestion} className="bg-gradient-primary">
             <Plus className="mr-2 h-4 w-4" />
             Add Question
@@ -243,85 +434,147 @@ const Admin = () => {
         </div>
 
         {questions.map((question, index) => (
-          <Card key={index} className="shadow-lg">
+          <Card key={index} className="shadow-lg relative">
             <CardHeader>
               <div className="flex justify-between items-center">
-                <CardTitle>Question {index + 1}</CardTitle>
-                {questions.length > 1 && (
-                  <Button
-                    onClick={() => removeQuestion(index)}
-                    variant="destructive"
-                    size="sm"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                )}
+                <div className="flex items-center gap-3">
+                  {questions.length > 1 && (
+                    <Checkbox
+                      checked={selectedForRegeneration.has(index)}
+                      onCheckedChange={() => toggleQuestionSelection(index)}
+                    />
+                  )}
+                  <CardTitle>Question {index + 1}</CardTitle>
+                </div>
+                <div className="flex gap-2">
+                  {editingIndex === index ? (
+                    <>
+                      <Button onClick={saveEditedQuestion} size="sm" variant="default">
+                        <Check className="h-4 w-4" />
+                      </Button>
+                      <Button onClick={cancelEditingQuestion} size="sm" variant="outline">
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button onClick={() => startEditingQuestion(index)} size="sm" variant="outline">
+                        <Edit2 className="h-4 w-4" />
+                      </Button>
+                      {questions.length > 1 && (
+                        <Button
+                          onClick={() => removeQuestion(index)}
+                          variant="destructive"
+                          size="sm"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Question Text</Label>
-                <Textarea
-                  value={question.question_text}
-                  onChange={(e) => updateQuestion(index, 'question_text', e.target.value)}
-                  placeholder="Enter your question"
-                />
-              </div>
+              {editingIndex === index && editedQuestion ? (
+                <>
+                  <div className="space-y-2">
+                    <Label>Question Text</Label>
+                    <Textarea
+                      value={editedQuestion.question_text}
+                      onChange={(e) => setEditedQuestion({ ...editedQuestion, question_text: e.target.value })}
+                      placeholder="Enter your question"
+                    />
+                  </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Option A</Label>
-                  <Input
-                    value={question.option_a}
-                    onChange={(e) => updateQuestion(index, 'option_a', e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Option B</Label>
-                  <Input
-                    value={question.option_b}
-                    onChange={(e) => updateQuestion(index, 'option_b', e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Option C</Label>
-                  <Input
-                    value={question.option_c}
-                    onChange={(e) => updateQuestion(index, 'option_c', e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Option D</Label>
-                  <Input
-                    value={question.option_d}
-                    onChange={(e) => updateQuestion(index, 'option_d', e.target.value)}
-                  />
-                </div>
-              </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Option A</Label>
+                      <Input
+                        value={editedQuestion.option_a}
+                        onChange={(e) => setEditedQuestion({ ...editedQuestion, option_a: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Option B</Label>
+                      <Input
+                        value={editedQuestion.option_b}
+                        onChange={(e) => setEditedQuestion({ ...editedQuestion, option_b: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Option C</Label>
+                      <Input
+                        value={editedQuestion.option_c}
+                        onChange={(e) => setEditedQuestion({ ...editedQuestion, option_c: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Option D</Label>
+                      <Input
+                        value={editedQuestion.option_d}
+                        onChange={(e) => setEditedQuestion({ ...editedQuestion, option_d: e.target.value })}
+                      />
+                    </div>
+                  </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Correct Option</Label>
-                  <select
-                    className="w-full p-2 border rounded-md"
-                    value={question.correct_option}
-                    onChange={(e) => updateQuestion(index, 'correct_option', e.target.value)}
-                  >
-                    <option value="A">A</option>
-                    <option value="B">B</option>
-                    <option value="C">C</option>
-                    <option value="D">D</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Category</Label>
-                  <Input
-                    value={question.category}
-                    onChange={(e) => updateQuestion(index, 'category', e.target.value)}
-                    placeholder="e.g., General Knowledge"
-                  />
-                </div>
-              </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Correct Option</Label>
+                      <select
+                        className="w-full p-2 border rounded-md bg-background"
+                        value={editedQuestion.correct_option}
+                        onChange={(e) => setEditedQuestion({ ...editedQuestion, correct_option: e.target.value })}
+                      >
+                        <option value="A">A</option>
+                        <option value="B">B</option>
+                        <option value="C">C</option>
+                        <option value="D">D</option>
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Category</Label>
+                      <Input
+                        value={editedQuestion.category}
+                        onChange={(e) => setEditedQuestion({ ...editedQuestion, category: e.target.value })}
+                        placeholder="e.g., General Knowledge"
+                      />
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <Label>Question Text</Label>
+                    <p className="p-3 bg-muted rounded-md min-h-[80px]">{question.question_text || <span className="text-muted-foreground">No question text</span>}</p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Option A {question.correct_option === 'A' && <span className="text-green-500">✓</span>}</Label>
+                      <p className="p-2 bg-muted rounded-md">{question.option_a || <span className="text-muted-foreground">-</span>}</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Option B {question.correct_option === 'B' && <span className="text-green-500">✓</span>}</Label>
+                      <p className="p-2 bg-muted rounded-md">{question.option_b || <span className="text-muted-foreground">-</span>}</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Option C {question.correct_option === 'C' && <span className="text-green-500">✓</span>}</Label>
+                      <p className="p-2 bg-muted rounded-md">{question.option_c || <span className="text-muted-foreground">-</span>}</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Option D {question.correct_option === 'D' && <span className="text-green-500">✓</span>}</Label>
+                      <p className="p-2 bg-muted rounded-md">{question.option_d || <span className="text-muted-foreground">-</span>}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-4 text-sm">
+                    <div>
+                      <span className="font-semibold">Category:</span> {question.category || <span className="text-muted-foreground">Not set</span>}
+                    </div>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         ))}

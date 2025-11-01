@@ -6,3 +6,6 @@ project_id = "larftdmdsegcnxplyfiw"
 
 [functions.import-quiz-from-sheets]
 verify_jwt = true
+
+[functions.generate-quiz-questions]
+verify_jwt = true
