@@ -104,7 +104,59 @@ const Payment = () => {
         }
       );
 
-      if (orderError) throw orderError;
+      if (orderError) {
+        const errorMessage = orderData?.error || orderError.message || 'Failed to create payment order';
+        
+        // Handle specific error cases with user-friendly messages
+        if (errorMessage.includes('Payment already completed')) {
+          toast({
+            title: 'Already Paid',
+            description: 'You have already paid for this quiz. Please check your dashboard.',
+            variant: 'destructive',
+          });
+        } else if (errorMessage.includes('duplicate') || errorMessage.includes('already exists')) {
+          toast({
+            title: 'Payment Already Initiated',
+            description: 'A payment for this quiz is already in progress. Please try again later.',
+            variant: 'destructive',
+          });
+        } else {
+          toast({
+            title: 'Payment Error',
+            description: 'Unable to process your payment request. Please try again.',
+            variant: 'destructive',
+          });
+        }
+        setLoading(false);
+        return;
+      }
+
+      // Check if the response itself contains an error
+      if (orderData?.error) {
+        const errorMessage = orderData.error;
+        
+        if (errorMessage.includes('Payment already completed')) {
+          toast({
+            title: 'Already Paid',
+            description: 'You have already paid for this quiz. Please check your dashboard.',
+            variant: 'destructive',
+          });
+        } else if (errorMessage.includes('duplicate') || errorMessage.includes('already exists')) {
+          toast({
+            title: 'Payment Already Initiated',
+            description: 'A payment for this quiz is already in progress. Please try again later.',
+            variant: 'destructive',
+          });
+        } else {
+          toast({
+            title: 'Payment Error',
+            description: 'Unable to process your payment request. Please try again.',
+            variant: 'destructive',
+          });
+        }
+        setLoading(false);
+        return;
+      }
 
       const options = {
         key: orderData.keyId,
