@@ -23,8 +23,8 @@ serve(async (req) => {
     );
 
     const { quizId, deviceFingerprint, isAnonymous, guestName, guestEmail, guestPhone } = await req.json();
-    
-    let userId = null;
+
+    let userId: string | null = null;
     if (!isAnonymous) {
       const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
       if (userError || !user) {
@@ -32,33 +32,8 @@ serve(async (req) => {
       }
       userId = user.id;
     }
-    
-    console.log('Creating Razorpay order for:', isAnonymous ? `device: ${deviceFingerprint}` : `user: ${userId}`, 'quiz:', quizId);
 
-    // Check for and clean up any existing pending payments
-    if (isAnonymous) {
-      const { error: deleteError } = await supabaseClient
-        .from('payments')
-        .delete()
-        .eq('quiz_id', quizId)
-        .eq('device_fingerprint', deviceFingerprint)
-        .eq('status', 'pending');
-      
-      if (deleteError) {
-        console.error('Error cleaning up pending payments:', deleteError);
-      }
-    } else {
-      const { error: deleteError } = await supabaseClient
-        .from('payments')
-        .delete()
-        .eq('quiz_id', quizId)
-        .eq('user_id', userId)
-        .eq('status', 'pending');
-      
-      if (deleteError) {
-        console.error('Error cleaning up pending payments:', deleteError);
-      }
-    }
+    console.log('Creating Razorpay order for:', isAnonymous ? `device: ${deviceFingerprint}` : `user: ${userId}`, 'quiz:', quizId);
 
     // Fetch actual quiz details from database to prevent amount manipulation
     const { data: quiz, error: quizError } = await supabaseClient
@@ -76,7 +51,6 @@ serve(async (req) => {
       throw new Error('Quiz is not active');
     }
 
-    // Use database amount only - never trust client input
     const amount = quiz.entry_fee;
     console.log('Using quiz entry fee from database:', amount);
 
@@ -87,6 +61,65 @@ serve(async (req) => {
       throw new Error('Razorpay credentials not configured');
     }
 
+    // Check for existing payment for this user/device & quiz
+    let existingQuery = supabaseClient
+      .from('payments')
+      .select('id, status, order_id, amount')
+      .eq('quiz_id', quizId);
+
+    if (isAnonymous) {
+      existingQuery = existingQuery.eq('is_anonymous', true).eq('device_fingerprint', deviceFingerprint);
+    } else {
+      existingQuery = existingQuery.eq('user_id', userId);
+    }
+
+    const { data: existingPayment, error: existingError } = await existingQuery.maybeSingle();
+    if (existingError) {
+      console.error('Error checking existing payment:', existingError);
+    }
+
+    if (existingPayment) {
+      if (existingPayment.status === 'success') {
+        console.log('Existing successful payment found:', existingPayment.id);
+        return new Response(
+          JSON.stringify({ error: 'Payment already completed' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      if (existingPayment.status === 'pending' && existingPayment.order_id) {
+        console.log('Reusing existing pending order:', existingPayment.order_id);
+        return new Response(
+          JSON.stringify({
+            orderId: existingPayment.order_id,
+            amount: Math.round(Number(existingPayment.amount) * 100), // paise
+            currency: 'INR',
+            keyId: razorpayKeyId,
+            paymentId: existingPayment.id,
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // Clean up any stray pending payments (edge case)
+    if (isAnonymous) {
+      const { error: deleteError } = await supabaseClient
+        .from('payments')
+        .delete()
+        .eq('quiz_id', quizId)
+        .eq('device_fingerprint', deviceFingerprint)
+        .eq('status', 'pending');
+      if (deleteError) console.error('Error cleaning up pending payments:', deleteError);
+    } else {
+      const { error: deleteError } = await supabaseClient
+        .from('payments')
+        .delete()
+        .eq('quiz_id', quizId)
+        .eq('user_id', userId)
+        .eq('status', 'pending');
+      if (deleteError) console.error('Error cleaning up pending payments:', deleteError);
+    }
+
     // Create Razorpay order
     const orderResponse = await fetch('https://api.razorpay.com/v1/orders', {
       method: 'POST',
@@ -95,15 +128,15 @@ serve(async (req) => {
         'Authorization': 'Basic ' + btoa(`${razorpayKeyId}:${razorpayKeySecret}`),
       },
       body: JSON.stringify({
-        amount: Math.round(amount * 100), // Convert to paise
+        amount: Math.round(Number(amount) * 100), // Convert to paise
         currency: 'INR',
         receipt: `q_${Date.now()}`, // Keep under 40 chars for Razorpay
       }),
     });
 
     if (!orderResponse.ok) {
-      const error = await orderResponse.text();
-      console.error('Razorpay order creation failed:', error);
+      const errorText = await orderResponse.text();
+      console.error('Razorpay order creation failed:', errorText);
       throw new Error('Failed to create Razorpay order');
     }
 
@@ -118,7 +151,7 @@ serve(async (req) => {
       status: 'pending',
       is_anonymous: isAnonymous || false,
     };
-    
+
     if (isAnonymous) {
       paymentData.device_fingerprint = deviceFingerprint;
       paymentData.guest_name = guestName;
@@ -149,14 +182,13 @@ serve(async (req) => {
         keyId: razorpayKeyId,
         paymentId: payment.id,
       }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
     console.error('Error in create-razorpay-order:', error);
+    const message = error instanceof Error ? error.message : (typeof error === 'string' ? error : JSON.stringify(error));
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+      JSON.stringify({ error: message }),
       {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
