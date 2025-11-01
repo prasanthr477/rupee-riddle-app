@@ -25,6 +25,7 @@ const Payment = () => {
   const [loading, setLoading] = useState(false);
   const [quiz, setQuiz] = useState<any>(null);
   const [deviceFingerprint, setDeviceFingerprint] = useState<string>('');
+  const [razorpayLoaded, setRazorpayLoaded] = useState(false);
 
   const quizId = location.state?.quizId;
   const passedFingerprint = location.state?.deviceFingerprint;
@@ -59,6 +60,8 @@ const Payment = () => {
     const script = document.createElement('script');
     script.src = 'https://checkout.razorpay.com/v1/checkout.js';
     script.async = true;
+    script.onload = () => setRazorpayLoaded(true);
+    script.onerror = () => setRazorpayLoaded(false);
     document.body.appendChild(script);
     return () => {
       document.body.removeChild(script);
@@ -86,6 +89,14 @@ const Payment = () => {
 
   const handlePayment = async () => {
     if (!quiz || !deviceFingerprint) return;
+    if (!razorpayLoaded || !window.Razorpay) {
+      toast({
+        title: 'Payment Unavailable',
+        description: 'Payment gateway is still loading. Please try again in a moment.',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     setLoading(true);
     try {
@@ -108,6 +119,28 @@ const Payment = () => {
           variant: 'destructive',
         });
         navigate('/quiz');
+        setLoading(false);
+        return;
+      }
+
+      // Block duplicate payments already in progress
+      let pendingQuery = supabase
+        .from('payments')
+        .select('id')
+        .eq('quiz_id', quiz.id)
+        .eq('status', 'pending');
+      if (user) {
+        pendingQuery = pendingQuery.eq('user_id', user.id);
+      } else {
+        pendingQuery = pendingQuery.eq('is_anonymous', true).eq('device_fingerprint', deviceFingerprint);
+      }
+      const { data: existingPending } = await pendingQuery.maybeSingle();
+      if (existingPending) {
+        toast({
+          title: 'Payment Already Initiated',
+          description: 'A payment is already in progress. Please complete it or try again later.',
+          variant: 'destructive',
+        });
         setLoading(false);
         return;
       }
@@ -295,7 +328,7 @@ const Payment = () => {
 
                 <Button
                   onClick={handlePayment}
-                  disabled={loading || !quiz}
+                  disabled={loading || !quiz || !razorpayLoaded}
                   className="w-full bg-gradient-gold text-lg py-6"
                 >
                   {loading ? 'Processing...' : 'Pay with Razorpay'}
