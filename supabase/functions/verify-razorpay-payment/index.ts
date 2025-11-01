@@ -76,6 +76,26 @@ serve(async (req) => {
 
     console.log('Signature verified successfully');
 
+    // First, find the payment record to verify it exists
+    console.log('Looking for payment with order_id:', orderId);
+    const { data: existingPayment, error: findError } = await supabaseClient
+      .from('payments')
+      .select('*')
+      .eq('order_id', orderId)
+      .maybeSingle();
+
+    if (findError) {
+      console.error('Error finding payment:', findError);
+      throw new Error('Failed to find payment record');
+    }
+
+    if (!existingPayment) {
+      console.error('Payment not found for order_id:', orderId);
+      throw new Error('Payment record not found');
+    }
+
+    console.log('Found payment record:', existingPayment.id);
+
     // Update payment record
     const updateData: any = {
       payment_id: paymentId,
@@ -90,18 +110,10 @@ serve(async (req) => {
       updateData.guest_phone = guestPhone;
     }
 
-    let updateQuery = supabaseClient
+    const { data: payment, error: updateError } = await supabaseClient
       .from('payments')
       .update(updateData)
-      .eq('order_id', orderId);
-    
-    if (isAnonymous) {
-      updateQuery = updateQuery.eq('device_fingerprint', deviceFingerprint).eq('is_anonymous', true);
-    } else {
-      updateQuery = updateQuery.eq('user_id', userId);
-    }
-
-    const { data: payment, error: updateError } = await updateQuery
+      .eq('order_id', orderId)
       .select()
       .single();
 
