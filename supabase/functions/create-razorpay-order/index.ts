@@ -35,6 +35,31 @@ serve(async (req) => {
     
     console.log('Creating Razorpay order for:', isAnonymous ? `device: ${deviceFingerprint}` : `user: ${userId}`, 'quiz:', quizId);
 
+    // Check for and clean up any existing pending payments
+    if (isAnonymous) {
+      const { error: deleteError } = await supabaseClient
+        .from('payments')
+        .delete()
+        .eq('quiz_id', quizId)
+        .eq('device_fingerprint', deviceFingerprint)
+        .eq('status', 'pending');
+      
+      if (deleteError) {
+        console.error('Error cleaning up pending payments:', deleteError);
+      }
+    } else {
+      const { error: deleteError } = await supabaseClient
+        .from('payments')
+        .delete()
+        .eq('quiz_id', quizId)
+        .eq('user_id', userId)
+        .eq('status', 'pending');
+      
+      if (deleteError) {
+        console.error('Error cleaning up pending payments:', deleteError);
+      }
+    }
+
     // Fetch actual quiz details from database to prevent amount manipulation
     const { data: quiz, error: quizError } = await supabaseClient
       .from('daily_quizzes')
