@@ -185,7 +185,7 @@ export type Database = {
           score: number | null
           submitted_at: string | null
           time_spent_seconds: number | null
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           answers?: Json | null
@@ -198,7 +198,7 @@ export type Database = {
           score?: number | null
           submitted_at?: string | null
           time_spent_seconds?: number | null
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           answers?: Json | null
@@ -211,7 +211,7 @@ export type Database = {
           score?: number | null
           submitted_at?: string | null
           time_spent_seconds?: number | null
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {

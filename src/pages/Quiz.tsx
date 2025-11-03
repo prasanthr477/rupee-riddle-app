@@ -74,7 +74,7 @@ const Quiz = () => {
     try {
       let query = supabase
         .from('payments')
-        .select('id')
+        .select('id, created_at')
         .eq('quiz_id', todayQuiz.id)
         .eq('status', 'success');
       
@@ -84,7 +84,10 @@ const Quiz = () => {
         query = query.eq('device_fingerprint', deviceFingerprint).eq('is_anonymous', true);
       }
 
-      const { data: payment } = await query.single();
+      const { data: payment } = await query
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
       if (!payment) {
         toast.error('Payment verification failed');
@@ -164,7 +167,7 @@ const Quiz = () => {
           </CardHeader>
           <CardContent className="space-y-6">
             <RadioGroup
-              value={answers[question.id]}
+              value={answers[question.id] ?? ''}
               onValueChange={(value) => setAnswers({ ...answers, [question.id]: value })}
             >
               <div className="space-y-3">
