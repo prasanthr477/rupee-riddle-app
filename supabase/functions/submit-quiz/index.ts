@@ -15,8 +15,10 @@ serve(async (req) => {
     const { quizId, paymentId, answers, timeSpentSeconds, deviceFingerprint, isAnonymous } = await req.json();
     
     let userId = null;
+    let supabaseClient;
+    
     if (!isAnonymous) {
-      const supabaseClient = createClient(
+      supabaseClient = createClient(
         Deno.env.get('SUPABASE_URL') ?? '',
         Deno.env.get('SUPABASE_ANON_KEY') ?? '',
         {
@@ -31,14 +33,15 @@ serve(async (req) => {
         throw new Error('Unauthorized');
       }
       userId = user.id;
+    } else {
+      // For anonymous users, use anon client
+      supabaseClient = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      );
     }
     
     console.log('Submitting quiz:', { quizId, paymentId, isAnonymous });
-    
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-    );
 
     // Verify payment exists and is successful
     let paymentQuery = supabaseClient
