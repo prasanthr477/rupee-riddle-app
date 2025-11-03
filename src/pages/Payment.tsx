@@ -123,28 +123,6 @@ const Payment = () => {
         return;
       }
 
-      // Block duplicate payments already in progress
-      let pendingQuery = supabase
-        .from('payments')
-        .select('id')
-        .eq('quiz_id', quiz.id)
-        .eq('status', 'pending');
-      if (user) {
-        pendingQuery = pendingQuery.eq('user_id', user.id);
-      } else {
-        pendingQuery = pendingQuery.eq('is_anonymous', true).eq('device_fingerprint', deviceFingerprint);
-      }
-      const { data: existingPending } = await pendingQuery.maybeSingle();
-      if (existingPending) {
-        toast({
-          title: 'Payment Already Initiated',
-          description: 'A payment is already in progress. Please complete it or try again later.',
-          variant: 'destructive',
-        });
-        setLoading(false);
-        return;
-      }
-
       // Create Razorpay order - amount is fetched server-side for security
       const { data: orderData, error: orderError } = await supabase.functions.invoke(
         'create-razorpay-order',
