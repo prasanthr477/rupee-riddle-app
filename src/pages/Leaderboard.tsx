@@ -12,10 +12,27 @@ const Leaderboard = () => {
   const navigate = useNavigate();
   const [leaders, setLeaders] = useState<any[]>([]);
   const [todayQuiz, setTodayQuiz] = useState<any>(null);
+  const [resultsPublished, setResultsPublished] = useState(false);
 
   useEffect(() => {
     loadLeaderboard();
   }, []);
+
+  const isResultsPublished = (quizDate: string, resultsTime: string) => {
+    // Get current time in IST (UTC+5:30)
+    const now = new Date();
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const istNow = new Date(now.getTime() + istOffset);
+    
+    // Parse quiz date and results time
+    const [year, month, day] = quizDate.split('-').map(Number);
+    const [hours, minutes, seconds] = resultsTime.split(':').map(Number);
+    
+    // Create results publish time in IST
+    const resultsDateTime = new Date(Date.UTC(year, month - 1, day, hours - 5, minutes - 30, seconds || 0));
+    
+    return istNow >= resultsDateTime;
+  };
 
   const loadLeaderboard = async () => {
     const today = new Date().toISOString().split('T')[0];
@@ -28,6 +45,11 @@ const Leaderboard = () => {
 
     if (!quiz) return;
     setTodayQuiz(quiz);
+
+    const published = isResultsPublished(quiz.quiz_date, quiz.results_time);
+    setResultsPublished(published);
+
+    if (!published) return;
 
     const { data: attempts } = await supabase
       .from('quiz_attempts')
@@ -85,7 +107,18 @@ const Leaderboard = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {leaders.length === 0 ? (
+            {!resultsPublished ? (
+              <div className="text-center py-12">
+                <Clock className="h-16 w-16 mx-auto mb-4 text-secondary animate-pulse" />
+                <p className="text-xl font-semibold mb-2">Results Not Published Yet</p>
+                <p className="text-muted-foreground">
+                  Leaderboard will be visible after {todayQuiz?.results_time} IST
+                </p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Come back later to see the rankings!
+                </p>
+              </div>
+            ) : leaders.length === 0 ? (
               <div className="text-center py-12">
                 <Trophy className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
                 <p className="text-lg text-muted-foreground">
